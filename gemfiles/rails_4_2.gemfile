@@ -12,6 +12,8 @@ end
 platforms :ruby do
   gem "pg", "< 1.0.0"
   gem "mysql2", "~> 0.4.0"
+  gem "activerecord-oracle_enhanced-adapter", "~> 1.6.9"
+  gem "ruby-oci8", require: "oci8", "~> 2.2.5.1"
 end
 
 platforms :jruby do
