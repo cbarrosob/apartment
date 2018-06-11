@@ -13,10 +13,39 @@ module Apartment
   module Adapters
     class OracleEnhancedAdapter < AbstractAdapter
 
+      delegate :connection, :establish_connection, to: ActiveRecord::Base
+
+
       def initialize(config)
         super
 
         @default_tenant = config[:username]
+      end
+
+    def create(connection, tenant)
+      begin
+        connection.execute "CREATE USER #{tenant} IDENTIFIED BY #{tenant}"
+      rescue => e
+        if e.message =~ /ORA-01920/ # user name conflicts with another user or role name
+          connection.execute "ALTER USER #{tenant} IDENTIFIED BY #{tenant}"
+        else
+          raise e
+        end
+      end
+      
+      @config.excluded_models
+      connection.execute "GRANT unlimited tablespace TO #{tenant}"
+      connection.execute "GRANT SELECT on #{@config[:username]}.referentials to #{tenant}"
+      connection.execute "GRANT create session TO #{tenant}"
+      connection.execute "GRANT create table TO #{tenant}"
+      connection.execute "GRANT create view TO #{tenant}"
+      connection.execute "GRANT create sequence TO #{tenant}"
+    end
+
+    private
+
+      def create_tenant_command(conn, tenant)
+        conn.create(environmentify(tenant), @config)
       end
 
     protected
@@ -46,9 +75,7 @@ module Apartment
       #
       def connect_to_new(tenant)
         return reset if tenant.nil?
-
         Apartment.connection.execute "ALTER SESSION SET CURRENT_SCHEMA = #{environmentify(tenant)}"
-
       rescue ActiveRecord::StatementInvalid => exception
         Apartment::Tenant.reset
         raise_connect_error!(tenant, exception)
