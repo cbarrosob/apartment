@@ -131,7 +131,11 @@ module Apartment
 
       def drop_command(conn, tenant)
         # connection.drop_database   note that drop_database will not throw an exception, so manually execute
-        conn.execute("DROP DATABASE #{conn.quote_table_name(environmentify(tenant))}")
+        if oracle_adapter?
+          conn.execute("DROP USER #{environmentify(tenant)} CASCADE")
+        else
+          conn.execute("DROP DATABASE #{conn.quote_table_name(environmentify(tenant))}")
+        end
       end
 
       #   Create the tenant

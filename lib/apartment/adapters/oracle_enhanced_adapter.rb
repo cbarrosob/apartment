@@ -38,7 +38,7 @@ module Apartment
       connection.execute "GRANT create table TO #{tenant}"
       connection.execute "GRANT create view TO #{tenant}"
       connection.execute "GRANT create sequence TO #{tenant}"
-      
+
       grant_select_on_principal_excluded_models(connection, tenant)
     end
 
