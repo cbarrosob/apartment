@@ -32,17 +32,25 @@ module Apartment
           raise e
         end
       end
-      
-      @config.excluded_models
+
       connection.execute "GRANT unlimited tablespace TO #{tenant}"
-      connection.execute "GRANT SELECT on #{@config[:username]}.referentials to #{tenant}"
       connection.execute "GRANT create session TO #{tenant}"
       connection.execute "GRANT create table TO #{tenant}"
       connection.execute "GRANT create view TO #{tenant}"
       connection.execute "GRANT create sequence TO #{tenant}"
+      
+      grant_select_on_principal_excluded_models(connection, tenant)
     end
 
     private
+
+      def grant_select_on_principal_excluded_models(connection, tenant)
+        Apartment.excluded_models.each do |model|
+          if ActiveRecord::Base.connection.tables.include? model.downcase.pluralize
+            connection.execute "GRANT SELECT on #{@config[:username]}.#{model.downcase.pluralize} to #{tenant}"
+          end
+        end
+      end
 
       def create_tenant_command(conn, tenant)
         conn.create(environmentify(tenant), @config)
