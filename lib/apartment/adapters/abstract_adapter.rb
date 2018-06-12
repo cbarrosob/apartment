@@ -35,7 +35,11 @@ module Apartment
       #   Note alias_method here doesn't work with inheritence apparently ??
       #
       def current
-        Apartment.connection.current_schema.downcase
+        if oracle_adapter?
+          Apartment.connection.current_schema.downcase
+        else
+          Apartment.connection.current_database
+        end
       end
 
       #   Return the original public tenant
@@ -67,7 +71,6 @@ module Apartment
       def switch!(tenant = nil)
         run_callbacks :switch do
           return reset if tenant.nil?
-byebug
           connect_to_new(tenant).tap do
             Apartment.connection.clear_query_cache
           end
@@ -136,24 +139,14 @@ byebug
       #   @param {String} tenant Database name
       #
       def create_tenant(tenant)
-byebug
         with_neutral_connection(tenant) do |conn|
-byebug
           create_tenant_command(conn, tenant)
         end
-        byebug
       rescue *rescuable_exceptions => exception
         raise_create_tenant_error!(tenant, exception)
       end
-=begin
-      def create_tenant_command(conn, tenant)
-byebug
-        conn.create_database(environmentify(tenant), @config)
-      end
-=end
 
       def create_tenant_command(conn, tenant)
-      byebug
         if conn && conn.class.name =~ /Oracle/
           OracleEnhancedAdapter.new(@config).create(conn,environmentify(tenant))
         else
@@ -274,6 +267,10 @@ byebug
 
       def raise_connect_error!(tenant, exception)
         raise TenantNotFound, "Error while connecting to tenant #{environmentify(tenant)}: #{ exception.message }"
+      end
+
+      def oracle_adapter?
+        Apartment.connection.class.name =~ /Oracle/
       end
 
       class SeparateDbConnectionHandler < ::ActiveRecord::Base
